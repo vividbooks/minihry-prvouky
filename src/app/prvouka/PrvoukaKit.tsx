@@ -231,7 +231,7 @@ export function PrvoukaPictureView({ picture, illustrations, size, height }: { p
     if (picture.sign === 'semafor-cervena' || picture.sign === 'semafor-zelena') {
       return <PedestrianLight green={picture.sign === 'semafor-zelena'} size={boxHeight} />;
     }
-    return <img src={`/prvouka/znacky/${picture.sign}.svg`} alt={picture.alt} draggable={false} style={{ width: size, height: boxHeight, objectFit: 'contain' }} />;
+    return <img src={`${import.meta.env.BASE_URL}prvouka/znacky/${picture.sign}.svg`} alt={picture.alt} draggable={false} style={{ width: size, height: boxHeight, objectFit: 'contain' }} />;
   }
   if (picture.kind === 'ill') return <IllustrationImage picture={picture} illustrations={illustrations} size={size} height={boxHeight} />;
   return (

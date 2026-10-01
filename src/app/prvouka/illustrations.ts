@@ -87,6 +87,6 @@ export function usePrvoukaIllustrations(): IllustrationLookup {
 
   return {
     ready: Boolean(map) || failed,
-    urls: (id) => (LOCAL_ILLUSTRATIONS.has(id) ? [`/prvouka/ill/${id}.png`] : map?.get(id) ?? []),
+    urls: (id) => (LOCAL_ILLUSTRATIONS.has(id) ? [`${import.meta.env.BASE_URL}prvouka/ill/${id}.png`] : map?.get(id) ?? []),
   };
 }

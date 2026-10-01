@@ -54,7 +54,7 @@ interface Animal {
 }
 
 const ill = (id: string, emoji: string, alt: string): PrvoukaPicture => ({ kind: 'ill', id, emoji, alt });
-const photo = (key: string, alt: string): PrvoukaPicture => ({ kind: 'photo', src: `/prvouka/foto/${key}.jpg`, alt });
+const photo = (key: string, alt: string): PrvoukaPicture => ({ kind: 'photo', src: `${import.meta.env.BASE_URL}prvouka/foto/${key}.jpg`, alt });
 
 /** Zvířata, která mají obrázek v knihovně ilustrací Laioutu (prvouka, čeština, matematika). */
 const ANIMALS: Animal[] = [

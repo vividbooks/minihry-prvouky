@@ -21,3 +21,13 @@ npm run dev
 - `src/app/prvouka/PrvoukaGame.tsx`, `PrvoukaKit.tsx`, `PrvoukaBoards.tsx` – herní plocha
 - `src/app/prvouka/registry.ts` – seznam her pro rozcestník a konfigurátor
 - `public/prvouka` – fotky (licence v `foto/credits.json`), ilustrace z Figmy, dopravní značky
+
+## Nasazení
+
+GitHub Pages z větve `gh-pages` (https://vividbooks.github.io/minihry-prvouky/):
+
+```bash
+./deploy-pages.sh
+```
+
+Skript sestaví aplikaci s `BASE_PATH=/minihry-prvouky/` a pushne obsah `dist` do `gh-pages`.

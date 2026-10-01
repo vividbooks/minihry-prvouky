@@ -8,7 +8,7 @@ interface Produce {
 }
 
 const ill = (id: string, emoji: string, alt: string): PrvoukaPicture => ({ kind: 'ill', id, emoji, alt });
-const photo = (key: string, alt: string): PrvoukaPicture => ({ kind: 'photo', src: `/prvouka/foto/${key}.jpg`, alt });
+const photo = (key: string, alt: string): PrvoukaPicture => ({ kind: 'photo', src: `${import.meta.env.BASE_URL}prvouka/foto/${key}.jpg`, alt });
 
 /**
  * Ovoce a zelenina (1/1/12). Kde má knihovna ilustrací Laioutu obrázek, bere se odtud.

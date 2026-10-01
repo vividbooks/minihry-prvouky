@@ -30,6 +30,8 @@ function figmaVersionedImportResolver() {
 }
 
 export default defineConfig({
+  // GitHub Pages běží v podsložce /minihry-prvouky/ (BASE_PATH nastavuje workflow), jinde z kořene.
+  base: process.env.BASE_PATH || '/',
   plugins: [
     figmaVersionedImportResolver(),
     figmaAssetResolver(),
