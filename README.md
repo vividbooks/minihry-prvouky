@@ -1,6 +1,12 @@
-# Vividbooks minihry
+# Minihry prvouky (Vividbooks)
 
-Matematické minihry pro 1. stupeň. Učitel si nastaví hru, nasdílí odkaz nebo QR kód a žáci ji spustí rovnou s tou konfigurací.
+Minihry k pracovním učebnicím prvouky pro 1. a 2. ročník: poznávačka zvířat, ovoce a zelenina,
+hodiny, rok a den, bezpečně venku. Vzhled i ovládání jsou převzaté z matematických Miniher
+(projekt `Vividbooks minihry`), jde ale o samostatnou aplikaci.
+
+Učitel si hru nastaví (ročník, témata podle stran sešitu, počet úloh), nasdílí odkaz nebo QR
+kód a žáci ji spustí s tím nastavením. Vše se zvětšuje podle obrazovky – počítá se
+s interaktivní tabulí.
 
 ## Vývoj
 
@@ -9,8 +15,9 @@ npm install
 npm run dev
 ```
 
-## Nasazení
+## Kde co je
 
-Produkční build jde na Vercel z větve `main`.
-
-Živé Figma Sites zůstává na [minihry.vividbooks.com](https://minihry.vividbooks.com) — DNS na nový Vercel projekt se musí přepnout zvlášť.
+- `src/app/prvouka/data` – úlohy a generátory (stejná data jako v Vividbooks Ultra, `features/prvouka-hry`)
+- `src/app/prvouka/PrvoukaGame.tsx`, `PrvoukaKit.tsx`, `PrvoukaBoards.tsx` – herní plocha
+- `src/app/prvouka/registry.ts` – seznam her pro rozcestník a konfigurátor
+- `public/prvouka` – fotky (licence v `foto/credits.json`), ilustrace z Figmy, dopravní značky

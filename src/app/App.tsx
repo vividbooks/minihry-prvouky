@@ -15,18 +15,10 @@ const GameConfigurator = React.lazy(() => import('./components/GameConfigurator'
 const GameResultScreenDemo = React.lazy(() => import('./components/GameResultScreenDemo').then(module => ({ default: module.GameResultScreenDemo })));
 
 // Simple registry check without importing the whole registry
-const VALID_GAMES = [
-  'numberRecognition', 'mathCrossword', 'numberSequence', 'patternSequence', 
-  'robotNavigation', 'numberComparison', 'quantityComparison', 'mathPractice', 
-  'mirrorDrawing', 'tilingGame', 'dominoGame', 'moneyExchange', 'boardGame', 
-  'mrBall', 'countingGame', 'mathSnake', 'imageReveal',
-  // Prvouka (rozcestník /prvouka)
-  'prvoukaZvirata', 'prvoukaOvoce', 'prvoukaHodiny', 'prvoukaRokDen', 'prvoukaBezpecnost'
-];
+// Samostatná aplikace Minihry prvouky – jen prvoukové hry (matematika je v projektu Vividbooks minihry).
+const VALID_GAMES = ['prvoukaZvirata', 'prvoukaOvoce', 'prvoukaHodiny', 'prvoukaRokDen', 'prvoukaBezpecnost'];
 
-/** Rozcestník podle cesty: /prvouka = prvoukové minihry, jinak matematika. */
-const LANDING_SUBJECT: 'math' | 'prvouka' =
-  typeof window !== 'undefined' && window.location.pathname.replace(/\/+$/, '').endsWith('/prvouka') ? 'prvouka' : 'math';
+const LANDING_SUBJECT: 'math' | 'prvouka' = 'prvouka';
 
 // Enhanced loading component with better timeout handling
 const GameLoader = () => {
@@ -250,24 +242,6 @@ export default function App() {
   // Dynamic game component loading - only load when needed
   const getGameComponent = (gameId: GameType) => {
     const gameComponents = {
-      numberRecognition: () => import('./components/NumberRecognitionGame').then(module => ({ default: module.NumberRecognitionGame })),
-      mathCrossword: () => import('./components/MathCrosswordGame').then(module => ({ default: module.MathCrosswordGame })),
-      numberSequence: () => import('./components/NumberSequenceGame').then(module => ({ default: module.NumberSequenceGame })),
-      patternSequence: () => import('./components/PatternSequenceGame').then(module => ({ default: module.PatternSequenceGame })),
-      robotNavigation: () => import('./components/RobotGame').then(module => ({ default: module.RobotGame })),
-      numberComparison: () => import('./components/NumberComparisonGame').then(module => ({ default: module.NumberComparisonGame })),
-      quantityComparison: () => import('./components/QuantityComparisonGame').then(module => ({ default: module.QuantityComparisonGame })),
-      mathPractice: () => import('./components/MathTinder').then(module => ({ default: module.MathTinder })),
-      mirrorDrawing: () => import('./components/MirrorDrawingGame').then(module => ({ default: module.MirrorDrawingGame })),
-      tilingGame: () => import('./components/TilingGame').then(module => ({ default: module.TilingGame })),
-      dominoGame: () => import('./components/DominoGame').then(module => ({ default: module.DominoGame })),
-      moneyExchange: () => import('./components/MoneyExchangeGame').then(module => ({ default: module.MoneyExchangeGame })),
-      boardGame: () => import('./components/WordProblemsGame').then(module => ({ default: module.BoardGame })),
-      mrBall: () => import('./components/MrBallGame').then(module => ({ default: module.MrBallGame })),
-      countingGame: () => import('./components/CountingGame').then(module => ({ default: module.CountingGame })),
-      mathSnake: () => import('./components/MathSnakeGame').then(module => ({ default: module.MathSnakeGame })),
-      imageReveal: () => import('./components/ImageRevealGame').then(module => ({ default: module.default })),
-      buildNumber: () => import('./components/BuildNumberGame').then(module => ({ default: module.BuildNumberGame })),
       ...Object.fromEntries(
         PRVOUKA_LANDING_GAMES.map((game) => [
           game.id,
