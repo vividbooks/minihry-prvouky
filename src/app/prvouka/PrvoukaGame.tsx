@@ -211,7 +211,8 @@ function ItemCard({ question, illustrations, size }: { question: PrvoukaQuestion
             border: `3px solid ${PRVOUKA_COLORS.CARD_BORDER}`,
             borderRadius: 24,
             padding: `${size * 0.045}px ${size * 0.065}px`,
-            fontSize: Math.max(20, size * 0.07),
+            // Delší popis (např. planeta z kartičky v učebnici) menším písmem a do šířky.
+            fontSize: Math.max(22, size * (question.caption.length > 40 ? 0.065 : 0.07)),
             fontWeight: 700,
             lineHeight: 1.3,
           }}
@@ -375,9 +376,11 @@ function ChoiceView({
   }
 
   const pictures = layout === 'pictures';
+  // Dlouhý popis vedle možností by se nevešel – obrázek s popisem nahoru, možnosti pod ně.
+  const stacked = pictures || (question.caption?.length ?? 0) > 40;
   return (
-    <div className={`flex items-center justify-center w-full ${pictures ? 'flex-col' : 'flex-col lg:flex-row'}`} style={{ gap: isMobile ? 18 : 40 * s }}>
-      {question.picture || question.caption ? <ItemCard question={question} illustrations={illustrations} size={cardSize} /> : null}
+    <div className={`flex items-center justify-center w-full ${stacked ? 'flex-col' : 'flex-col lg:flex-row'}`} style={{ gap: isMobile ? 18 : (stacked ? 24 : 40) * s }}>
+      {question.picture || question.caption ? <ItemCard question={question} illustrations={illustrations} size={stacked && !pictures ? cardSize * 0.75 : cardSize} /> : null}
       <div
         className="grid w-full"
         style={{

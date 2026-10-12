@@ -66,6 +66,9 @@ export const vesmirGame: PrvoukaGame = {
           key: `poznej:${planet.id}`,
           prompt: 'Která planeta to je?',
           picture: planetPicture(planet),
+          // Z obrázku samotného to třeťák nepozná – popis z kartičky v učebnici napoví.
+          caption: planet.text,
+          captionStyle: 'bubble',
           task: { kind: 'choice', layout: 'grid', options: nameOptions(planet.id).map((p) => ({ id: p.id, label: p.name, correct: p.id === planet.id })) },
           hint: `Je to ${planet.name}. ${planet.text}`,
         });

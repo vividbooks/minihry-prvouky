@@ -8,14 +8,13 @@ import {
   SYNODIC,
   drawMoonOrbit,
   drawMoonSky,
-  drawSolar,
   moonThumb,
   phaseIndex,
   prefersReducedMotion,
   todayMoonDay,
   type PlanetKey,
-  type SolarState,
 } from './space-engine';
+import { SolarScene3D, type SolarBodyId } from './solar-3d';
 
 /**
  * Interaktivní modely 3. ročníku (Putování vesmírem, Schovaná v Mléčné dráze, Jediná obyvatelná):
@@ -58,106 +57,73 @@ function SpaceButton({ pressed, onClick, children }: { pressed?: boolean; onClic
 
 function SolarModel({ settings }: { settings?: Record<string, any> }) {
   const still = useMemo(prefersReducedMotion, []);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const state = useRef<SolarState>({
-    years: 0,
-    tilt: 0.42,
-    view: settings?.view === 'size' ? 'size' : 'orbit',
-    labels: settings?.labels !== false,
-    selected: 'zeme',
-    follow: null,
-    cam: { x: 0, y: 0, z: 1 },
-    hit: [],
-  });
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const sceneRef = useRef<SolarScene3D | null>(null);
   const [playing, setPlaying] = useState(!still);
   const [speed, setSpeed] = useState(40);
-  const [view, setView] = useState(state.current.view);
-  const [labels, setLabels] = useState(state.current.labels);
-  const [selected, setSelected] = useState('zeme');
-  const [follow, setFollow] = useState<PlanetKey | null>(null);
-  const [clock, setClock] = useState('');
-  const playingRef = useRef(playing);
-  const speedRef = useRef(speed);
-  playingRef.current = playing;
-  speedRef.current = speed;
+  const [view, setView] = useState<'orbit' | 'size'>(settings?.view === 'size' ? 'size' : 'orbit');
+  const [labels, setLabels] = useState(settings?.labels !== false);
+  const [selected, setSelected] = useState<SolarBodyId>('zeme');
+  const [focused, setFocused] = useState(false);
+  const [clock, setClock] = useState(formatYears(0));
+  const [webglError, setWebglError] = useState(false);
 
   useEffect(() => {
-    state.current.view = view;
-    state.current.labels = labels;
-    state.current.selected = selected;
-    state.current.follow = view === 'orbit' ? follow : null;
-  }, [view, labels, selected, follow]);
-
-  useEffect(() => {
-    let raf = 0;
-    let last = performance.now();
+    if (!containerRef.current) return;
+    let scene: SolarScene3D;
     let lastClock = '';
-    const frame = (now: number) => {
-      const dt = Math.min(0.1, (now - last) / 1000);
-      last = now;
-      const s = speedRef.current / 100;
-      if (playingRef.current) state.current.years += dt * (0.02 + s * s * 1.2);
-      if (canvasRef.current) drawSolar(canvasRef.current, state.current, now / 1000, still);
-      const text = formatYears(state.current.years);
-      if (text !== lastClock) { lastClock = text; setClock(text); }
-      raf = requestAnimationFrame(frame);
-    };
-    raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
-  }, [still]);
-
-  // Klepnutí vybere těleso, tažení nahoru a dolů nakloní pohled.
-  const drag = useRef<{ y: number; tilt: number; moved: boolean } | null>(null);
-  const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    drag.current = { y: e.clientY, tilt: state.current.tilt, moved: false };
-    e.currentTarget.setPointerCapture(e.pointerId);
-  };
-  const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!drag.current) return;
-    const dy = e.clientY - drag.current.y;
-    if (Math.abs(dy) > 4) drag.current.moved = true;
-    if (drag.current.moved && state.current.view === 'orbit') state.current.tilt = Math.min(1, Math.max(0.12, drag.current.tilt - dy / 300));
-  };
-  const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (drag.current && !drag.current.moved) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - rect.left, y = e.clientY - rect.top;
-      let best: string | null = null, bd = Infinity;
-      for (const h of state.current.hit) {
-        const d = Math.hypot(h.x - x, h.y - y);
-        if (d < h.r && d < bd) { bd = d; best = h.id; }
-      }
-      if (best) {
-        setSelected(best);
-        if (follow && SPACE_PLANETS.some((p) => p.id === best)) setFollow(best as PlanetKey);
-      }
+    try {
+      scene = new SolarScene3D(containerRef.current, {
+        view,
+        labels,
+        still,
+        onSelect: (id) => { setSelected(id); setFocused(true); },
+        onYears: (years) => { const text = formatYears(years); if (text !== lastClock) { lastClock = text; setClock(text); } },
+      });
+    } catch {
+      setWebglError(true);
+      return;
     }
-    drag.current = null;
+    sceneRef.current = scene;
+    return () => { scene.dispose(); sceneRef.current = null; };
+    // Scéna se staví jednou; další změny jdou přes její metody.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => { sceneRef.current?.setPlaying(playing); }, [playing]);
+  useEffect(() => { sceneRef.current?.setSpeed(speed / 100); }, [speed]);
+  useEffect(() => { sceneRef.current?.setLabels(labels); }, [labels]);
+  useEffect(() => { sceneRef.current?.setView(view); setFocused(false); }, [view]);
+
+  const choose = (id: SolarBodyId) => {
+    setSelected(id);
+    setFocused(true);
+    sceneRef.current?.select(id);
+  };
+  const overview = () => {
+    setFocused(false);
+    sceneRef.current?.select(null);
   };
 
   const planet = SPACE_PLANETS.find((p) => p.id === selected);
   const other = OTHER_BODIES[selected as keyof typeof OTHER_BODIES];
   const note = view === 'orbit'
-    ? 'Klepni na planetu. Táhnutím nakloníš pohled. Vzdálenosti jsou zmenšené – Neptun je ve skutečnosti 30× dál od Slunce než Země.'
+    ? 'Klepni na planetu – přiblíží se. Tažením otáčíš, kolečkem nebo dvěma prsty přibližuješ. Vzdálenosti jsou zmenšené: Neptun je ve skutečnosti 30× dál od Slunce než Země.'
     : 'Velikosti ve skutečném poměru. Do Slunce by se vešlo asi 1 300 000 Zemí, Jupiter je asi 11× širší než Země.';
 
   return (
     <div className="w-full min-h-[100svh] bg-[#eef1f8] p-3 md:p-5 pb-20 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,24vw)]">
-      <div className="relative rounded-3xl overflow-hidden bg-[#060a1c] min-h-[60svh] lg:min-h-0">
-        <canvas
-          ref={canvasRef}
-          className="absolute inset-0 w-full h-full touch-none"
-          aria-label="Model Sluneční soustavy. Klepni na planetu."
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-        />
-        <p className="absolute top-3 left-4 right-48 text-xs md:text-sm text-[#9aa6d1] pointer-events-none">{note}</p>
-        <p className="absolute top-3 right-4 text-sm md:text-base font-bold text-[#e7ecff] tabular-nums">Uběhlo {clock}</p>
-        <div className="absolute left-3 right-3 bottom-3 flex flex-wrap gap-2 items-center justify-end">
+      <div ref={containerRef} className="relative rounded-3xl overflow-hidden bg-[#04060f] min-h-[60svh] lg:min-h-0">
+        {webglError ? (
+          <p className="absolute inset-0 flex items-center justify-center p-6 text-center text-[#e7ecff] text-lg">Tenhle prohlížeč neumí 3D grafiku (WebGL). Zkus jiný prohlížeč nebo novější zařízení.</p>
+        ) : null}
+        <p className="absolute top-3 left-4 right-48 z-10 text-xs md:text-sm text-[#9aa6d1] pointer-events-none">{note}</p>
+        {view === 'orbit' ? <p className="absolute top-3 right-4 z-10 text-sm md:text-base font-bold text-[#e7ecff] tabular-nums pointer-events-none">Uběhlo {clock}</p> : null}
+        <div className="absolute left-3 right-3 bottom-3 z-10 flex flex-wrap gap-2 items-center justify-end">
+          {focused ? <SpaceButton onClick={overview}>Celá soustava</SpaceButton> : null}
           <SpaceButton pressed={playing} onClick={() => setPlaying((v) => !v)}>{playing ? 'Pauza' : 'Spustit'}</SpaceButton>
           <SpaceButton pressed={view === 'orbit'} onClick={() => setView('orbit')}>Oběžné dráhy</SpaceButton>
-          <SpaceButton pressed={view === 'size'} onClick={() => { setView('size'); setFollow(null); }}>Skutečné velikosti</SpaceButton>
+          <SpaceButton pressed={view === 'size'} onClick={() => setView('size')}>Skutečné velikosti</SpaceButton>
           <SpaceButton pressed={labels} onClick={() => setLabels((v) => !v)}>Popisky</SpaceButton>
           <label className="flex items-center gap-2 rounded-full px-3 py-2 text-sm text-[#9aa6d1]" style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.14)' }}>
             Rychlost
@@ -183,13 +149,11 @@ function SolarModel({ settings }: { settings?: Record<string, any> }) {
             </dl>
             <div className="flex flex-wrap gap-2">
               <ReadButton text={`${planet.name}. ${planet.order}. planeta od Slunce. ${planet.text}`} />
-              <button
-                type="button"
-                onClick={() => { setView('orbit'); setFollow(follow === planet.id ? null : planet.id); }}
-                className="inline-flex items-center rounded-full border border-[#d5dbeb] bg-[#f5f7fc] px-4 py-2 font-bold"
-              >
-                {follow === planet.id ? 'Oddálit' : 'Přiblížit'}
-              </button>
+              {focused ? (
+                <button type="button" onClick={overview} className="inline-flex items-center rounded-full border border-[#d5dbeb] bg-[#f5f7fc] px-4 py-2 font-bold">Celá soustava</button>
+              ) : (
+                <button type="button" onClick={() => choose(planet.id)} className="inline-flex items-center rounded-full border border-[#d5dbeb] bg-[#f5f7fc] px-4 py-2 font-bold">Přiblížit</button>
+              )}
             </div>
           </>
         ) : other ? (
@@ -197,7 +161,10 @@ function SolarModel({ settings }: { settings?: Record<string, any> }) {
             <span className="text-xs font-bold uppercase tracking-widest text-[#56628a]">Vesmírné těleso</span>
             <h2 className="text-3xl font-bold">{other.name}</h2>
             <p className="text-lg leading-snug">{other.text}</p>
-            <ReadButton text={`${other.name}. ${other.text}`} />
+            <div className="flex flex-wrap gap-2">
+              <ReadButton text={`${other.name}. ${other.text}`} />
+              {focused ? <button type="button" onClick={overview} className="inline-flex items-center rounded-full border border-[#d5dbeb] bg-[#f5f7fc] px-4 py-2 font-bold">Celá soustava</button> : null}
+            </div>
           </>
         ) : null}
         <div className="grid grid-cols-4 gap-2 mt-1">
@@ -206,12 +173,19 @@ function SolarModel({ settings }: { settings?: Record<string, any> }) {
               key={p.id}
               type="button"
               aria-pressed={selected === p.id}
-              onClick={() => { setSelected(p.id); if (follow) setFollow(p.id); }}
+              onClick={() => choose(p.id)}
               className="flex flex-col items-center gap-1 rounded-xl border px-1 py-2 text-xs md:text-sm font-bold"
               style={{ borderColor: selected === p.id ? '#f0a12c' : '#d5dbeb', boxShadow: selected === p.id ? 'inset 0 0 0 2px #f0a12c' : undefined, background: '#f5f7fc' }}
             >
               <img src={planetIcon(p.id)} alt="" className="w-9 h-9" />
               {p.name}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(['slunce', 'mesic', 'kometa'] as const).map((id) => (
+            <button key={id} type="button" aria-pressed={selected === id} onClick={() => choose(id)} className="rounded-full border px-3 py-1.5 text-sm font-bold" style={{ borderColor: selected === id ? '#f0a12c' : '#d5dbeb', background: '#f5f7fc' }}>
+              {OTHER_BODIES[id].name}
             </button>
           ))}
         </div>
