@@ -215,6 +215,16 @@ export function prvoukaGameSettings(game: PrvoukaLandingGame, backgroundSettings
         ],
         description: 'Mezi pohledy jde přepínat i během promítání',
       },
+      style: {
+        name: 'Vzhled planet',
+        type: 'select' as const,
+        defaultValue: 'realny',
+        options: [
+          { value: 'realny', label: 'Opravdový (fotografie NASA)' },
+          { value: 'kresleny', label: 'Kreslený' },
+        ],
+        description: 'Přepnout jde i během promítání',
+      },
       labels: { name: 'Popisky planet', type: 'boolean' as const, defaultValue: true, description: 'Jména planet u modelu' },
     };
   }

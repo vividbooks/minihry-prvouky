@@ -12,8 +12,12 @@ import { rng, SPACE_PLANETS, type PlanetKey, type SpacePlanet } from './space-en
 
 export type SolarBodyId = PlanetKey | 'slunce' | 'mesic' | 'kometa';
 
+export type SolarStyle = 'realny' | 'kresleny';
+
 export interface SolarSceneOptions {
   view: 'orbit' | 'size';
+  /** Opravdový vzhled (fotografické textury NASA) nebo kreslený (ploché barvy s obrysem). */
+  style: SolarStyle;
   labels: boolean;
   still: boolean;
   onSelect: (id: SolarBodyId) => void;
@@ -193,6 +197,19 @@ function glowTexture(inner: string, outer: string): THREE.Texture {
   return new THREE.CanvasTexture(c);
 }
 
+/** Fotografické textury (Solar System Scope, CC BY 4.0, podle dat NASA) – viz `public/prvouka/tretak/textury/CREDITS.md`. */
+const TEXTURES = `${import.meta.env.BASE_URL}prvouka/tretak/textury/`;
+
+/** Tři stupně stínování pro kreslený styl. */
+function toonGradient(): THREE.Texture {
+  const data = new Uint8Array([70, 70, 70, 255, 160, 160, 160, 255, 255, 255, 255, 255]);
+  const t = new THREE.DataTexture(data, 3, 1, THREE.RGBAFormat);
+  t.minFilter = THREE.NearestFilter;
+  t.magFilter = THREE.NearestFilter;
+  t.needsUpdate = true;
+  return t;
+}
+
 const tex = (c: HTMLCanvasElement) => {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -244,9 +261,17 @@ export class SolarScene3D {
   private flight: { fromPos: THREE.Vector3; fromTarget: THREE.Vector3; t: number; overview: boolean } | null = null;
   private lastFocusPos = new THREE.Vector3();
   private down: { x: number; y: number } | null = null;
+  private style: SolarStyle;
+  /** Tělesa se dvěma vzhledy: kreslený materiál je hned, opravdový se načte až při prvním přepnutí. */
+  private skins: Array<{ mesh: THREE.Mesh; cartoon: THREE.Material; file: string; make: (t: THREE.Texture) => THREE.Material; real?: THREE.Material }> = [];
+  private outlines: THREE.Object3D[] = [];
+  private loader = new THREE.TextureLoader();
+  private toon = toonGradient();
+  private outlineMat = new THREE.MeshBasicMaterial({ color: 0x1b1530, side: THREE.BackSide });
 
   constructor(private container: HTMLElement, private opts: SolarSceneOptions) {
     this.view = opts.view;
+    this.style = opts.style;
     this.showLabels = opts.labels;
     this.playing = !opts.still;
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -278,6 +303,7 @@ export class SolarScene3D {
 
     const sunMat = new THREE.MeshBasicMaterial({ map: tex(planetMap('slunce')) });
     this.sun = new THREE.Mesh(new THREE.SphereGeometry(SUN_R, 64, 32), sunMat);
+    this.skin(this.sun, sunMat, 'slunce.jpg', (t) => new THREE.MeshBasicMaterial({ map: t }));
     this.sun.userData.id = 'slunce';
     this.scene.add(this.sun);
     this.sunGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('rgba(255,200,90,0.9)', 'rgba(255,120,20,0)'), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
@@ -289,7 +315,9 @@ export class SolarScene3D {
 
     // Měsíc kolem Země
     const earth = this.planets.find((n) => n.p.id === 'zeme')!;
-    this.moon = new THREE.Mesh(new THREE.SphereGeometry(0.42, 32, 16), new THREE.MeshStandardMaterial({ map: tex(planetMap('mesic')), roughness: 1 }));
+    this.moon = new THREE.Mesh(new THREE.SphereGeometry(0.42, 32, 16), this.cartoonMaterial(planetMap('mesic')));
+    this.skin(this.moon, this.moon.material as THREE.Material, 'mesic.jpg', (t) => new THREE.MeshStandardMaterial({ map: t, roughness: 1 }));
+    this.addOutline(this.moon);
     this.moon.userData.id = 'mesic';
     this.moon.position.set(earth.baseR * 2.2 + 1.2, 0, 0);
     this.moonPivot.add(this.moon);
@@ -315,10 +343,10 @@ export class SolarScene3D {
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 8), new THREE.MeshBasicMaterial({ color: 0xeaf6ff }));
     head.userData.id = 'kometa';
     this.comet.add(head);
-    const tailGeo = new THREE.ConeGeometry(0.9, 1, 16, 1, true);
+    const tailGeo = new THREE.ConeGeometry(0.55, 1, 16, 1, true);
     tailGeo.translate(0, -0.5, 0);
     tailGeo.rotateX(-Math.PI / 2);
-    this.cometTail = new THREE.Mesh(tailGeo, new THREE.MeshBasicMaterial({ color: 0xbfe4ff, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    this.cometTail = new THREE.Mesh(tailGeo, new THREE.MeshBasicMaterial({ color: 0xbfe4ff, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
     this.comet.add(this.cometTail);
     this.scene.add(this.comet);
     this.addLabel('kometa', 'kometa');
@@ -331,6 +359,7 @@ export class SolarScene3D {
     this.resizeObserver.observe(container);
     this.resize();
     this.applyView(true);
+    this.setStyle(this.style);
     this.raf = requestAnimationFrame(this.frame);
   }
 
@@ -357,12 +386,15 @@ export class SolarScene3D {
     const axis = new THREE.Group();
     axis.rotation.z = THREE.MathUtils.degToRad(TILT[p.id] ?? 0);
     holder.add(axis);
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 32), new THREE.MeshStandardMaterial({ map: tex(planetMap(p.id)), roughness: 1, metalness: 0 }));
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 32), this.cartoonMaterial(planetMap(p.id)));
+    this.skin(mesh, mesh.material as THREE.Material, `${p.id}.jpg`, (t) => new THREE.MeshStandardMaterial({ map: t, roughness: 1, metalness: 0 }));
+    this.addOutline(mesh);
     mesh.scale.setScalar(baseR);
     mesh.userData.id = p.id;
     axis.add(mesh);
     if (p.id === 'zeme') {
-      const clouds = new THREE.Mesh(new THREE.SphereGeometry(1.015, 64, 32), new THREE.MeshStandardMaterial({ map: tex(cloudsMap()), transparent: true, depthWrite: false, roughness: 1 }));
+      const clouds = new THREE.Mesh(new THREE.SphereGeometry(1.015, 64, 32), new THREE.MeshToonMaterial({ map: tex(cloudsMap()), gradientMap: this.toon, transparent: true, depthWrite: false }));
+      this.skin(clouds, clouds.material as THREE.Material, 'zeme-mraky.jpg', (t) => new THREE.MeshStandardMaterial({ color: 0xffffff, alphaMap: t, transparent: true, depthWrite: false, roughness: 1 }), false);
       mesh.add(clouds);
       const atmo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('rgba(110,170,255,0.35)', 'rgba(110,170,255,0)'), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
       atmo.scale.setScalar(2.5);
@@ -380,6 +412,9 @@ export class SolarScene3D {
         uv.setXY(i, (v.length() - inner) / (outer - inner), 0.5);
       }
       const ring = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex(ringMap(p.id)), transparent: true, side: THREE.DoubleSide, depthWrite: false, roughness: 1 }));
+      if (p.id === 'saturn') {
+        this.skin(ring, ring.material as THREE.Material, 'saturn-prstence.png', (t) => new THREE.MeshStandardMaterial({ map: t, transparent: true, side: THREE.DoubleSide, depthWrite: false, roughness: 1 }));
+      }
       ring.rotation.x = -Math.PI / 2;
       ring.scale.setScalar(baseR);
       ring.userData.id = p.id;
@@ -395,6 +430,38 @@ export class SolarScene3D {
     this.scene.add(orbit);
     const label = this.addLabel(p.id, p.name);
     this.planets.push({ p, holder, axis, mesh, orbit, baseR, label });
+  }
+
+  private cartoonMaterial(map: HTMLCanvasElement) {
+    return new THREE.MeshToonMaterial({ map: tex(map), gradientMap: this.toon });
+  }
+
+  private skin(mesh: THREE.Mesh, cartoon: THREE.Material, file: string, make: (t: THREE.Texture) => THREE.Material, color = true) {
+    const entry = { mesh, cartoon, file, make: (t: THREE.Texture) => { if (color) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return make(t); } };
+    this.skins.push(entry);
+  }
+
+  /** Kreslený obrys: o kousek větší koule z rubu v tmavé barvě. */
+  private addOutline(mesh: THREE.Mesh) {
+    const outline = new THREE.Mesh(mesh.geometry, this.outlineMat);
+    outline.scale.setScalar(1.045);
+    outline.raycast = () => {};
+    mesh.add(outline);
+    this.outlines.push(outline);
+  }
+
+  /** Přepne vzhled: opravdový (textury NASA) / kreslený (ploché barvy s obrysem). */
+  setStyle(style: SolarStyle) {
+    this.style = style;
+    for (const k of this.skins) {
+      if (style === 'realny') {
+        if (!k.real) k.real = k.make(this.loader.load(TEXTURES + k.file));
+        k.mesh.material = k.real;
+      } else {
+        k.mesh.material = k.cartoon;
+      }
+    }
+    for (const o of this.outlines) o.visible = style === 'kresleny';
   }
 
   private addLabel(id: string, text: string) {
@@ -605,8 +672,14 @@ export class SolarScene3D {
     const target = this.focus ? this.bodyPosition(this.focus) : this.overviewTarget();
     // Sledování: kamera se posouvá s vybraným tělesem, otáčet kolem něj jde dál.
     if (this.focus && !this.flight) {
-      const delta = target.clone().sub(this.lastFocusPos);
-      this.camera.position.add(delta);
+      // Posun s tělesem a pootočení o úhel, o který se posunulo po dráze –
+      // kamera tak zůstává na straně od Slunce a vidíme osvětlenou stranu.
+      const offset = this.camera.position.clone().sub(this.lastFocusPos);
+      if (this.view === 'orbit' && this.focus !== 'slunce' && target.lengthSq() > 0.01) {
+        const turn = Math.atan2(target.x, target.z) - Math.atan2(this.lastFocusPos.x, this.lastFocusPos.z);
+        offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), turn);
+      }
+      this.camera.position.copy(target).add(offset);
       this.controls.target.copy(target);
     }
     if (this.flight) {

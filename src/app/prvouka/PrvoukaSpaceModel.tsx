@@ -14,7 +14,7 @@ import {
   todayMoonDay,
   type PlanetKey,
 } from './space-engine';
-import { SolarScene3D, type SolarBodyId } from './solar-3d';
+import { SolarScene3D, type SolarBodyId, type SolarStyle } from './solar-3d';
 
 /**
  * Interaktivní modely 3. ročníku (Putování vesmírem, Schovaná v Mléčné dráze, Jediná obyvatelná):
@@ -63,6 +63,7 @@ function SolarModel({ settings }: { settings?: Record<string, any> }) {
   const [speed, setSpeed] = useState(40);
   const [view, setView] = useState<'orbit' | 'size'>(settings?.view === 'size' ? 'size' : 'orbit');
   const [labels, setLabels] = useState(settings?.labels !== false);
+  const [style, setStyle] = useState<SolarStyle>(settings?.style === 'kresleny' ? 'kresleny' : 'realny');
   const [selected, setSelected] = useState<SolarBodyId>('zeme');
   const [focused, setFocused] = useState(false);
   const [clock, setClock] = useState(formatYears(0));
@@ -76,6 +77,7 @@ function SolarModel({ settings }: { settings?: Record<string, any> }) {
       scene = new SolarScene3D(containerRef.current, {
         view,
         labels,
+        style,
         still,
         onSelect: (id) => { setSelected(id); setFocused(true); },
         onYears: (years) => { const text = formatYears(years); if (text !== lastClock) { lastClock = text; setClock(text); } },
@@ -93,6 +95,7 @@ function SolarModel({ settings }: { settings?: Record<string, any> }) {
   useEffect(() => { sceneRef.current?.setPlaying(playing); }, [playing]);
   useEffect(() => { sceneRef.current?.setSpeed(speed / 100); }, [speed]);
   useEffect(() => { sceneRef.current?.setLabels(labels); }, [labels]);
+  useEffect(() => { sceneRef.current?.setStyle(style); }, [style]);
   useEffect(() => { sceneRef.current?.setView(view); setFocused(false); }, [view]);
 
   const choose = (id: SolarBodyId) => {
@@ -124,6 +127,10 @@ function SolarModel({ settings }: { settings?: Record<string, any> }) {
           <SpaceButton pressed={playing} onClick={() => setPlaying((v) => !v)}>{playing ? 'Pauza' : 'Spustit'}</SpaceButton>
           <SpaceButton pressed={view === 'orbit'} onClick={() => setView('orbit')}>Oběžné dráhy</SpaceButton>
           <SpaceButton pressed={view === 'size'} onClick={() => setView('size')}>Skutečné velikosti</SpaceButton>
+          <div className="flex rounded-full overflow-hidden" role="group" aria-label="Vzhled planet">
+            <SpaceButton pressed={style === 'realny'} onClick={() => setStyle('realny')}>Opravdový</SpaceButton>
+            <SpaceButton pressed={style === 'kresleny'} onClick={() => setStyle('kresleny')}>Kreslený</SpaceButton>
+          </div>
           <SpaceButton pressed={labels} onClick={() => setLabels((v) => !v)}>Popisky</SpaceButton>
           <label className="flex items-center gap-2 rounded-full px-3 py-2 text-sm text-[#9aa6d1]" style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.14)' }}>
             Rychlost
