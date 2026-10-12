@@ -16,7 +16,7 @@ const GameResultScreenDemo = React.lazy(() => import('./components/GameResultScr
 
 // Simple registry check without importing the whole registry
 // Samostatná aplikace Minihry prvouky – jen prvoukové hry (matematika je v projektu Vividbooks minihry).
-const VALID_GAMES = ['prvoukaZvirata', 'prvoukaOvoce', 'prvoukaHodiny', 'prvoukaRokDen', 'prvoukaBezpecnost'];
+const VALID_GAMES = PRVOUKA_LANDING_GAMES.map((game) => game.id);
 
 const LANDING_SUBJECT: 'math' | 'prvouka' = 'prvouka';
 
@@ -245,11 +245,15 @@ export default function App() {
       ...Object.fromEntries(
         PRVOUKA_LANDING_GAMES.map((game) => [
           game.id,
-          () => import('./prvouka/PrvoukaGame').then((module) => ({
-            default: (props: { settings?: Record<string, any> }) => (
-              <module.PrvoukaGame prvoukaGameId={game.dataId} defaultBackground={game.playBg} {...props} />
-            ),
-          })),
+          game.model
+            ? () => import('./prvouka/PrvoukaSpaceModel').then((module) => ({
+              default: (props: { settings?: Record<string, any> }) => <module.PrvoukaSpaceModel model={game.model!} {...props} />,
+            }))
+            : () => import('./prvouka/PrvoukaGame').then((module) => ({
+              default: (props: { settings?: Record<string, any> }) => (
+                <module.PrvoukaGame prvoukaGameId={game.dataId} defaultBackground={game.playBg} defaultGrade={game.grades?.[0]} {...props} />
+              ),
+            })),
         ]),
       ),
     } as Record<string, () => Promise<{ default: React.ComponentType<any> }>>;

@@ -2,7 +2,7 @@
 export type CzechPromptIconId = string;
 
 /** Ročník, pro který je úloha; hra si podle něj vybírá témata a obtížnost. */
-export type PrvoukaGrade = 1 | 2;
+export type PrvoukaGrade = 1 | 2 | 3;
 
 /** Dopravní značky – SVG z přílohy sešitu 2. ročníku (Doprava venku), v `public/prvouka-img/znacky`. */
 export type PrvoukaSignId =
@@ -41,6 +41,14 @@ export interface PrvoukaChoiceOption {
   correct: boolean;
 }
 
+export interface PrvoukaOrderItem {
+  id: string;
+  label: string;
+  picture?: PrvoukaPicture;
+  /** Nápověda, když dítě klepne na jinou položku, než která patří na řadu. */
+  hint?: string;
+}
+
 export type PrvoukaBoard = 'months' | 'week' | 'dayparts' | 'seasons';
 
 export type PrvoukaTask =
@@ -51,6 +59,8 @@ export type PrvoukaTask =
     options: PrvoukaChoiceOption[];
   }
   | { kind: 'clock-set'; hour: number; minute: number; step: number; show24?: boolean }
+  /** Seřaď: položky jsou zadané ve správném pořadí, hra je zamíchá. */
+  | { kind: 'order'; items: PrvoukaOrderItem[] }
   | {
     kind: 'board';
     board: PrvoukaBoard;

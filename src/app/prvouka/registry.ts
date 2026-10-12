@@ -4,10 +4,14 @@
  * a konfigurátor.
  */
 import { PRVOUKA_GAMES, defaultPrvoukaTopics } from './data/catalog';
+import type { PrvoukaGrade } from './data/types';
 
 const ILLUSTRATIONS = 'https://qypiuvqglsmxdsnyazih.supabase.co/storage/v1/object/public/platform-shared/laiout-illustrations/assets';
 
-export type PrvoukaGameType = 'prvoukaZvirata' | 'prvoukaOvoce' | 'prvoukaHodiny' | 'prvoukaRokDen' | 'prvoukaBezpecnost';
+export type PrvoukaGameType =
+  | 'prvoukaZvirata' | 'prvoukaOvoce' | 'prvoukaHodiny' | 'prvoukaRokDen' | 'prvoukaBezpecnost'
+  | 'prvoukaVesmir' | 'prvoukaMesic' | 'prvoukaPodminky' | 'prvoukaSymboly' | 'prvoukaZeme'
+  | 'prvoukaModelSoustava' | 'prvoukaModelMesic';
 
 export interface PrvoukaLandingGame {
   id: PrvoukaGameType;
@@ -27,7 +31,13 @@ export interface PrvoukaLandingGame {
   image: string;
   /** Výřez obrázku na kartě (`object-position`), když střed usekne hlavu. */
   imagePosition?: string;
+  /** Ročníky, které konfigurátor nabídne (výchozí 1. a 2.). */
+  grades?: PrvoukaGrade[];
+  /** Interaktivní model místo kvízu (Sluneční soustava, fáze Měsíce). */
+  model?: 'soustava' | 'mesic';
 }
+
+const TRETAK = `${import.meta.env.BASE_URL}prvouka/tretak/karty`;
 
 export const PRVOUKA_LANDING_GAMES: PrvoukaLandingGame[] = [
   {
@@ -87,6 +97,93 @@ export const PRVOUKA_LANDING_GAMES: PrvoukaLandingGame[] = [
     image: `${ILLUSTRATIONS}/prvouka-hriste-1300.png`,
     imagePosition: 'center 40%',
   },
+  // 3. ročník, 1. díl – vesmír, podmínky pro život, naše republika
+  {
+    id: 'prvoukaModelSoustava',
+    dataId: 'model-soustava',
+    name: 'Model Sluneční soustavy',
+    description: 'planety obíhají kolem Slunce – klepni a zjisti víc.',
+    longDescription: 'Interaktivní model k promítnutí: Slunce a osm planet obíhají ve skutečném poměru rychlostí, s Měsícem, kometou a pásem planetek. Klepnutím na planetu se ukáže kartička z učebnice, přepínač ukáže skutečné velikosti.',
+    icon: '🪐',
+    bg: '#D0DBFF',
+    playBg: '#060a1c',
+    image: `${TRETAK}/model-soustava.jpg`,
+    grades: [3],
+    model: 'soustava',
+  },
+  {
+    id: 'prvoukaModelMesic',
+    dataId: 'model-mesic',
+    name: 'Model fází Měsíce',
+    description: 'proč Měsíc dorůstá a couvá.',
+    longDescription: 'Vlevo pohled shora na Slunce, Zemi a Měsíc, vpravo jak Měsíc vidíme ze Země. Jezdcem projdete celý měsíc, tlačítko Dnes na obloze ukáže dnešní fázi. Nápověda D jako dorůstá, C jako couvá.',
+    icon: '🌓',
+    bg: '#D0DBFF',
+    playBg: '#060a1c',
+    image: `${TRETAK}/model-mesic.jpg`,
+    grades: [3],
+    model: 'mesic',
+  },
+  {
+    id: 'prvoukaVesmir',
+    dataId: 'vesmir',
+    name: 'Sluneční soustava',
+    description: 'pořadí planet, poznávačka a vesmírná tělesa.',
+    longDescription: 'Seřaď planety od Slunce, poznej planetu podle obrázku, urči, kde v soustavě leží, a pojmenuj vesmírná tělesa – mlhovinu, hvězdu, galaxii nebo černou díru.',
+    icon: '🪐',
+    bg: '#D0DBFF',
+    playBg: '#E6ECFF',
+    image: `${TRETAK}/vesmir.jpg`,
+    grades: [3],
+  },
+  {
+    id: 'prvoukaMesic',
+    dataId: 'mesic',
+    name: 'Fáze Měsíce',
+    description: 'seřaď fáze, dorůstá, nebo couvá?',
+    longDescription: 'Seřaď fáze Měsíce od novu, pojmenuj je a poznej, jestli Měsíc dorůstá, nebo couvá. Co uvidíme na obloze za týden?',
+    icon: '🌓',
+    bg: '#D0DBFF',
+    playBg: '#E6ECFF',
+    image: `${TRETAK}/mesic.jpg`,
+    grades: [3],
+  },
+  {
+    id: 'prvoukaPodminky',
+    dataId: 'podminky',
+    name: 'Podmínky pro život',
+    description: 'slunce, voda, vzduch a živiny.',
+    longDescription: 'Co potřebuje život na Zemi? Třídíme informace ke slunci, vodě, vzduchu a živinám a po pokusech rozhodujeme, co je pravda.',
+    icon: '💧',
+    bg: '#e0f2e6',
+    playBg: '#E7F9EE',
+    image: `${TRETAK}/podminky.jpg`,
+    grades: [3],
+  },
+  {
+    id: 'prvoukaSymboly',
+    dataId: 'symboly',
+    name: 'Státní symboly',
+    description: 'znaky, vlajka, hymna a 28. října.',
+    longDescription: 'Poznáš všech sedm státních symbolů? Kde je potkáš – na vysvědčení, na dresu, na radnici? A proč slavíme 28. října?',
+    icon: '🇨🇿',
+    bg: '#FFD3C5',
+    playBg: '#FCEEEF',
+    image: `${TRETAK}/symboly.jpg`,
+    grades: [3],
+  },
+  {
+    id: 'prvoukaZeme',
+    dataId: 'zeme',
+    name: 'Země, nebo země?',
+    description: 'velké, nebo malé Z.',
+    longDescription: 'Planeta Země se píše s velkým Z, půda, zem pod nohama i stát s malým z. Doplň písmeno do věty a urči, co slovo znamená.',
+    icon: '🌍',
+    bg: '#fcfbdc',
+    playBg: '#FAF3D4',
+    image: `${TRETAK}/zeme.jpg`,
+    grades: [3],
+  },
 ];
 
 export const PRVOUKA_GAME_TYPES = PRVOUKA_LANDING_GAMES.map((game) => game.id);
@@ -100,11 +197,35 @@ export const PRVOUKA_GAME_GROUPS: Array<{ title: string; games: PrvoukaGameType[
   { title: 'Poznávám přírodu', games: ['prvoukaZvirata', 'prvoukaOvoce'] },
   { title: 'Orientace v čase', games: ['prvoukaHodiny', 'prvoukaRokDen'] },
   { title: 'Bezpečí a zdraví', games: ['prvoukaBezpecnost'] },
+  { title: '3. ročník: Vesmír a Země', games: ['prvoukaModelSoustava', 'prvoukaModelMesic', 'prvoukaVesmir', 'prvoukaMesic', 'prvoukaPodminky'] },
+  { title: '3. ročník: Naše republika', games: ['prvoukaSymboly', 'prvoukaZeme'] },
 ];
 
 /** Nastavení pro konfigurátor: ročník, témata, počet úloh, pozadí. */
 export function prvoukaGameSettings(game: PrvoukaLandingGame, backgroundSettings: Record<string, any>) {
+  if (game.model === 'soustava') {
+    return {
+      view: {
+        name: 'Pohled na začátku',
+        type: 'select' as const,
+        defaultValue: 'orbit',
+        options: [
+          { value: 'orbit', label: 'Oběžné dráhy' },
+          { value: 'size', label: 'Skutečné velikosti' },
+        ],
+        description: 'Mezi pohledy jde přepínat i během promítání',
+      },
+      labels: { name: 'Popisky planet', type: 'boolean' as const, defaultValue: true, description: 'Jména planet u modelu' },
+    };
+  }
+  if (game.model === 'mesic') {
+    return {
+      hintDC: { name: 'Nápověda D / C', type: 'boolean' as const, defaultValue: true, description: 'U srpků a čtvrtí ukáže písmeno D (dorůstá) nebo C (couvá)' },
+      startToday: { name: 'Začít dnešní fází', type: 'boolean' as const, defaultValue: false, description: 'Model se otevře s Měsícem, jak je dnes na obloze' },
+    };
+  }
   const data = PRVOUKA_GAMES.find((item) => item.id === game.dataId);
+  const grades = game.grades ?? [1, 2];
   const topicOptions = (data?.topics ?? []).map((topic) => ({ value: topic.id, label: `${topic.label} (str. ${topic.pages})` }));
   return {
     ...backgroundSettings,
@@ -112,17 +233,14 @@ export function prvoukaGameSettings(game: PrvoukaLandingGame, backgroundSettings
     grade: {
       name: 'Ročník',
       type: 'select' as const,
-      defaultValue: 1,
-      options: [
-        { value: 1, label: '1. ročník' },
-        { value: 2, label: '2. ročník' },
-      ],
+      defaultValue: grades[0],
+      options: grades.map((value) => ({ value, label: `${value}. ročník` })),
       description: 'Podle ročníku se volí obtížnost (např. hodiny po půlhodinách, nebo po pěti minutách)',
     },
     topics: {
       name: 'Co procvičujeme',
       type: 'multiselect' as const,
-      defaultValue: data ? defaultPrvoukaTopics(data, 1) : [],
+      defaultValue: data ? defaultPrvoukaTopics(data, grades[0]) : [],
       options: topicOptions,
       description: 'Témata podle stran pracovní učebnice prvouky (ročník/díl/strana)',
     },

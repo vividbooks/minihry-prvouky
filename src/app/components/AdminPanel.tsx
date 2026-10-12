@@ -18,6 +18,8 @@ const PRVOUKA_COVERS = [
   'https://qypiuvqglsmxdsnyazih.supabase.co/storage/v1/object/public/platform-admin/files/assets/768a488e-465d-4735-8640-0a5a8158ea5d-workbook-1-2a82d142-ea68-4724-b00b-87dd9da2f144/image/83fe0e48a283584bcf9aee5e2f0982248f9745d6.png',
   'https://qypiuvqglsmxdsnyazih.supabase.co/storage/v1/object/public/platform-admin/files/assets/768a488e-465d-4735-8640-0a5a8158ea5d-workbook-21-bd054f3f-04c5-43bd-8ab2-85f19d8c2a1a/image/96dab1b936f3a050e5119c467cb72e88eb8787ae.png',
   'https://qypiuvqglsmxdsnyazih.supabase.co/storage/v1/object/public/platform-admin/files/assets/768a488e-465d-4735-8640-0a5a8158ea5d-workbook-35-59e12b18-d549-45b8-bb9a-3d979e22ade4/image/d86d66b170e9652b51e2b1c5753a60a23d242268.jpg',
+  // Prvouka 3. ročník / 1. díl (obálka z e-shopu)
+  'https://iekkundgizzdbmkzatdl.supabase.co/storage/v1/object/public/make-93a20b6f-images/1791798619084-jq7iegvwhtm.jpg',
 ];
 
 // Lazy loaded image component to prevent blocking - optimized
@@ -282,7 +284,7 @@ export const AdminPanel = React.memo(({ onConfigureGame, subject = 'math' }: Adm
               {/* Header Buttons */}
               <div className="flex flex-row gap-3 w-full lg:w-auto mb-4">
                 <button className="px-4 md:px-6 py-2 md:py-3 border-2 border-[#4e5871] text-[#4e5871] rounded-lg hover:bg-[#4e5871] hover:text-white transition-colors text-xs md:text-sm">
-                  {isPrvouka ? 'Prvouka: 1. a 2. ročník' : 'Matematika: 1. ročník'}
+                  {isPrvouka ? 'Prvouka: 1.–3. ročník' : 'Matematika: 1. ročník'}
                 </button>
                 <a 
                   href="https://app.vividbooks.com/" 
@@ -305,8 +307,8 @@ export const AdminPanel = React.memo(({ onConfigureGame, subject = 'math' }: Adm
                       alt=""
                       className="absolute top-6 h-56 md:h-64 w-auto rounded-md object-contain"
                       style={{
-                        left: `${index * 30}%`,
-                        transform: `rotate(${[-6, 2, 12][index]}deg) translateY(${[0, 10, 30][index]}px)`,
+                        left: `${index * 22}%`,
+                        transform: `rotate(${[-6, 2, 8, 14][index]}deg) translateY(${[0, 10, 22, 36][index]}px)`,
                         boxShadow: '0 12px 28px rgba(9,5,111,0.18)',
                         zIndex: index,
                       }}

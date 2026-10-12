@@ -5,7 +5,7 @@ import { GameResultScreen } from '../components/GameResultScreen';
 import { findPrvoukaGame, defaultPrvoukaTopics } from './data/catalog';
 import { composeRound, createRandom, shuffle } from './data/random';
 import { canSpeak, speakCzech, stopSpeaking } from './data/speech';
-import type { PrvoukaChoiceOption, PrvoukaGame as PrvoukaGameData, PrvoukaGrade, PrvoukaQuestion } from './data/types';
+import type { PrvoukaChoiceOption, PrvoukaGame as PrvoukaGameData, PrvoukaGrade, PrvoukaOrderItem, PrvoukaQuestion } from './data/types';
 import { usePrvoukaIllustrations, type IllustrationLookup } from './illustrations';
 import {
   BOX_PALETTES,
@@ -28,6 +28,8 @@ export interface PrvoukaGameProps {
   prvoukaGameId: string;
   /** Barva plochy, když odkaz nemá nastavení (z registru, stejná jako výchozí v konfigurátoru). */
   defaultBackground?: string;
+  /** Ročník, když ho odkaz nenastavuje (hry 3. ročníku mají 3). */
+  defaultGrade?: PrvoukaGrade;
   settings?: Record<string, any>;
 }
 
@@ -51,6 +53,7 @@ function spokenText(question: PrvoukaQuestion): string {
     const labels = task.options.map((option) => option.label).filter(Boolean);
     if (labels.length > 0) parts.push(labels.join(', nebo '));
   }
+  if (task.kind === 'order') parts.push(task.items.map((item) => item.label).join(', '));
   return parts.map((part) => part.replace(/[.?!]+$/, '')).join('. ') + '.';
 }
 
@@ -58,9 +61,10 @@ function spokenText(question: PrvoukaQuestion): string {
  * Jedna prvouková minihra. Chová se jako Rozřaď čísla: kolo má daný počet úloh,
  * chyba stojí srdíčko (bez opravy, jde se dál), po třech chybách hra končí.
  */
-export function PrvoukaGame({ prvoukaGameId, defaultBackground, settings }: PrvoukaGameProps) {
+export function PrvoukaGame({ prvoukaGameId, defaultBackground, defaultGrade, settings }: PrvoukaGameProps) {
   const game = findPrvoukaGame(prvoukaGameId);
-  const grade: PrvoukaGrade = Number(settings?.grade) === 2 ? 2 : 1;
+  const requestedGrade = Number(settings?.grade);
+  const grade: PrvoukaGrade = requestedGrade === 1 || requestedGrade === 2 || requestedGrade === 3 ? requestedGrade : defaultGrade ?? 1;
   const rounds = Math.max(3, Math.min(30, Number(settings?.rounds) || 10));
   const backgroundColor = settings?.backgroundColor || defaultBackground || PRVOUKA_COLORS.PAGE_BG;
   const topics: string[] = useMemo(() => {
@@ -182,6 +186,9 @@ function QuestionView({ question, illustrations, locked, onAnswer }: QuestionVie
   if (task.kind === 'choice') {
     return <ChoiceView question={question} options={task.options} layout={task.layout} illustrations={illustrations} locked={locked} onAnswer={onAnswer} />;
   }
+  if (task.kind === 'order') {
+    return <OrderView items={task.items} illustrations={illustrations} locked={locked} onAnswer={onAnswer} />;
+  }
   if (task.kind === 'clock-set') {
     return <ClockView question={question} hour={task.hour} minute={task.minute} step={task.step} show24={task.show24} illustrations={illustrations} locked={locked} onAnswer={onAnswer} />;
   }
@@ -237,7 +244,7 @@ function ItemCard({ question, illustrations, size }: { question: PrvoukaQuestion
   );
 }
 
-const SORT_PALETTES: BoxPalette[] = [BOX_PALETTES.green, BOX_PALETTES.orange, BOX_PALETTES.blue];
+const SORT_PALETTES: BoxPalette[] = [BOX_PALETTES.green, BOX_PALETTES.orange, BOX_PALETTES.blue, BOX_PALETTES.purple];
 
 /** Třídění: kartička nahoře sjede do zvolené krabice (jako Rozřaď čísla). */
 function SortView({ question, options, illustrations, locked, onAnswer }: { question: PrvoukaQuestion; options: PrvoukaChoiceOption[]; illustrations: IllustrationLookup; locked: boolean; onAnswer: (ok: boolean) => void }) {
@@ -247,7 +254,7 @@ function SortView({ question, options, illustrations, locked, onAnswer }: { ques
   const [sliding, setSliding] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const boxRefs = useRef(new Map<string, HTMLDivElement>());
-  const boxSize = isMobile ? (options.length > 2 ? 104 : 140) : (options.length > 2 ? 190 : 200) * s;
+  const boxSize = isMobile ? (options.length > 3 ? 80 : options.length > 2 ? 104 : 140) : (options.length > 3 ? 170 : options.length > 2 ? 190 : 200) * s;
   const cardSize = isMobile ? 190 : 260 * s;
   const labelLength = Math.max(...options.flatMap((option) => option.label.split(' ').map((word) => word.length)));
 
@@ -513,6 +520,105 @@ function BoardView({ question, illustrations, locked, onAnswer }: { question: Pr
             ✓
           </motion.button>
         ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Seřaď: nahoře očíslovaná místa, dole zamíchané kartičky. Klepnutí na kartičku, která
+ * patří na řadu, ji posadí na místo; jiná kartička zatřese a ukáže nápovědu.
+ * Úloha je správně, když dítě seřadí vše bez chyby.
+ */
+function OrderView({ items, illustrations, locked, onAnswer }: { items: PrvoukaOrderItem[]; illustrations: IllustrationLookup; locked: boolean; onAnswer: (ok: boolean) => void }) {
+  const isMobile = useIsMobile();
+  const s = useDesktopScale();
+  const [placed, setPlaced] = useState(0);
+  const [mistakes, setMistakes] = useState(0);
+  const [shaking, setShaking] = useState<string | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
+  const [pool] = useState(() => shuffle(items, Math.random));
+  const done = placed >= items.length;
+  const slotWidth = isMobile ? 76 : Math.min(150, 1000 / items.length) * s;
+  const pictureSize = isMobile ? 48 : slotWidth * 0.62;
+
+  const tap = (item: PrvoukaOrderItem) => {
+    if (locked || done) return;
+    const wanted = items[placed];
+    if (item.id === wanted.id) {
+      const next = placed + 1;
+      setPlaced(next);
+      setHint(null);
+      if (next >= items.length) setTimeout(() => onAnswer(mistakes === 0), 450);
+      return;
+    }
+    setMistakes((value) => value + 1);
+    setShaking(item.id);
+    setHint(wanted.hint ?? null);
+    setTimeout(() => setShaking(null), 450);
+  };
+
+  const card = (item: PrvoukaOrderItem, width: number) => (
+    <>
+      {item.picture ? <PrvoukaPictureView picture={item.picture} illustrations={illustrations} size={pictureSize} /> : null}
+      <span style={{ fontSize: isMobile ? 14 : Math.max(15, 19 * s), fontWeight: 700, lineHeight: 1.15, maxWidth: width - 8, textAlign: 'center' }}>{item.label}</span>
+    </>
+  );
+
+  return (
+    <div className="flex flex-col items-center w-full" style={{ gap: isMobile ? 14 : 26 * s, maxWidth: '96vw' }}>
+      <div className="flex flex-wrap justify-center" style={{ gap: isMobile ? 6 : 12 * s }}>
+        {items.map((item, position) => {
+          const filled = position < placed;
+          return (
+            <div
+              key={item.id}
+              className="flex flex-col items-center justify-center"
+              style={{
+                width: slotWidth,
+                minHeight: slotWidth * 1.15,
+                borderRadius: 16,
+                border: `3px ${filled ? 'solid' : 'dashed'} ${filled ? BOX_PALETTES.green.border : PRVOUKA_COLORS.CARD_BORDER}`,
+                backgroundColor: filled ? BOX_PALETTES.green.front : 'rgba(255,255,255,0.5)',
+                gap: 4,
+                padding: 4,
+              }}
+            >
+              <span style={{ fontSize: isMobile ? 13 : 17 * s, fontWeight: 700, opacity: 0.7 }}>{position + 1}.</span>
+              {filled ? card(item, slotWidth) : null}
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex flex-wrap justify-center" style={{ gap: isMobile ? 8 : 14 * s, minHeight: slotWidth * 1.1 }}>
+        {pool.filter((item) => items.findIndex((x) => x.id === item.id) >= placed).map((item) => (
+          <motion.button
+            key={item.id}
+            type="button"
+            onClick={() => tap(item)}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            animate={shaking === item.id ? { x: [0, -8, 8, -6, 6, 0] } : { x: 0 }}
+            transition={{ duration: 0.4 }}
+            className="flex flex-col items-center justify-center"
+            style={{
+              width: slotWidth,
+              minHeight: slotWidth * 1.05,
+              borderRadius: 16,
+              backgroundColor: PRVOUKA_COLORS.CARD_BG,
+              border: `3px solid ${shaking === item.id ? '#FF4D6D' : PRVOUKA_COLORS.CARD_BORDER}`,
+              boxShadow: `0 4px 0 ${PRVOUKA_COLORS.CARD_BORDER}`,
+              color: PRVOUKA_COLORS.TEXT,
+              gap: 4,
+              padding: 6,
+            }}
+          >
+            {card(item, slotWidth)}
+          </motion.button>
+        ))}
+      </div>
+      <div style={{ minHeight: isMobile ? 40 : 56 * s, fontSize: isMobile ? 16 : 22 * s, fontWeight: 600, textAlign: 'center', maxWidth: 900 * s }}>
+        {hint ? `Tady ještě ne. ${hint}` : null}
       </div>
     </div>
   );
