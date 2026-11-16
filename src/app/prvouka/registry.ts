@@ -6,12 +6,14 @@
 import { PRVOUKA_GAMES, defaultPrvoukaTopics } from './data/catalog';
 import type { PrvoukaGrade } from './data/types';
 
+import { CONSTELLATIONS, SEASONS } from './stars-data';
+
 const ILLUSTRATIONS = 'https://qypiuvqglsmxdsnyazih.supabase.co/storage/v1/object/public/platform-shared/laiout-illustrations/assets';
 
 export type PrvoukaGameType =
   | 'prvoukaZvirata' | 'prvoukaOvoce' | 'prvoukaHodiny' | 'prvoukaRokDen' | 'prvoukaBezpecnost'
   | 'prvoukaVesmir' | 'prvoukaMesic' | 'prvoukaPodminky' | 'prvoukaSymboly' | 'prvoukaZeme'
-  | 'prvoukaModelSoustava' | 'prvoukaModelMesic';
+  | 'prvoukaModelSoustava' | 'prvoukaModelMesic' | 'prvoukaHvezdy' | 'prvoukaSouhvezdi';
 
 export interface PrvoukaLandingGame {
   id: PrvoukaGameType;
@@ -31,13 +33,18 @@ export interface PrvoukaLandingGame {
   image: string;
   /** Výřez obrázku na kartě (`object-position`), když střed usekne hlavu. */
   imagePosition?: string;
+  /** contain = celý obrázek se vejde do karty (postava se neořízne). */
+  imageFit?: 'cover' | 'contain';
+  /** Čtvercová ikona do okna s nastavením – když by čtvercový výřez z karty motiv usekl. */
+  iconImage?: string;
   /** Ročníky, které konfigurátor nabídne (výchozí 1. a 2.). */
   grades?: PrvoukaGrade[];
   /** Interaktivní model místo kvízu (Sluneční soustava, fáze Měsíce). */
-  model?: 'soustava' | 'mesic';
+  model?: 'soustava' | 'mesic' | 'hvezdy' | 'souhvezdi';
 }
 
 const TRETAK = `${import.meta.env.BASE_URL}prvouka/tretak/karty`;
+const TRETAK_IKONY = `${import.meta.env.BASE_URL}prvouka/tretak/ikony`;
 
 export const PRVOUKA_LANDING_GAMES: PrvoukaLandingGame[] = [
   {
@@ -61,7 +68,8 @@ export const PRVOUKA_LANDING_GAMES: PrvoukaLandingGame[] = [
     bg: '#e0f2e6',
     playBg: '#E7F9EE',
     image: `${ILLUSTRATIONS}/ovoce-zelenina-1300.png`,
-    imagePosition: 'center 15%',
+    imagePosition: 'center bottom',
+    imageFit: 'contain',
   },
   {
     id: 'prvoukaHodiny',
@@ -118,11 +126,37 @@ export const PRVOUKA_LANDING_GAMES: PrvoukaLandingGame[] = [
     description: 'proč Měsíc dorůstá a couvá.',
     longDescription: 'Vlevo pohled shora na Slunce, Zemi a Měsíc, vpravo jak Měsíc vidíme ze Země. Jezdcem projdete celý měsíc, tlačítko Dnes na obloze ukáže dnešní fázi. Nápověda D jako dorůstá, C jako couvá.',
     icon: '🌓',
-    bg: '#D0DBFF',
+    bg: '#E6DDFB',
     playBg: '#060a1c',
     image: `${TRETAK}/model-mesic.jpg`,
     grades: [3],
     model: 'mesic',
+  },
+  {
+    id: 'prvoukaHvezdy',
+    dataId: 'hvezdy',
+    name: 'Model hvězdné oblohy',
+    description: 'souhvězdí na otočné mapě po ročních obdobích.',
+    longDescription: 'Model noční oblohy k promítnutí: 26 souhvězdí s popisem a otočná mapa, která ukáže, co je vidět na jaře, v létě, na podzim a v zimě. Uprostřed Polárka, kolem ní souhvězdí, která vidíme po celý rok.',
+    icon: '🌌',
+    bg: '#D4EEF2',
+    playBg: '#05081a',
+    image: `${import.meta.env.BASE_URL}prvouka/obloha-karta.svg`,
+    grades: [3],
+    model: 'hvezdy',
+  },
+  {
+    id: 'prvoukaSouhvezdi',
+    dataId: 'souhvezdi',
+    name: 'Souhvězdí',
+    description: 'spoj hvězdy podle čísel a najdi Polárku.',
+    longDescription: 'Děti spojují hvězdy souhvězdí podle čísel. V nastavení vyberete roční období a hra z nich losuje souhvězdí, pokaždé jiná. Po Velkém voze podle jeho zadních hvězd najdou Polárku, která ukazuje sever.',
+    icon: '✨',
+    bg: '#fcfbdc',
+    playBg: '#05081a',
+    image: `${import.meta.env.BASE_URL}prvouka/hvezdy-karta.svg`,
+    grades: [3],
+    model: 'souhvezdi',
   },
   {
     id: 'prvoukaVesmir',
@@ -131,7 +165,7 @@ export const PRVOUKA_LANDING_GAMES: PrvoukaLandingGame[] = [
     description: 'pořadí planet, poznávačka a vesmírná tělesa.',
     longDescription: 'Seřaď planety od Slunce, poznej planetu podle obrázku, urči, kde v soustavě leží, a pojmenuj vesmírná tělesa – mlhovinu, hvězdu, galaxii nebo černou díru.',
     icon: '🪐',
-    bg: '#D0DBFF',
+    bg: '#FFE5B4',
     playBg: '#E6ECFF',
     image: `${TRETAK}/vesmir.jpg`,
     grades: [3],
@@ -143,7 +177,7 @@ export const PRVOUKA_LANDING_GAMES: PrvoukaLandingGame[] = [
     description: 'seřaď fáze, dorůstá, nebo couvá?',
     longDescription: 'Seřaď fáze Měsíce od novu, pojmenuj je a poznej, jestli Měsíc dorůstá, nebo couvá. Co uvidíme na obloze za týden?',
     icon: '🌓',
-    bg: '#D0DBFF',
+    bg: '#FBDDE6',
     playBg: '#E6ECFF',
     image: `${TRETAK}/mesic.jpg`,
     grades: [3],
@@ -158,6 +192,7 @@ export const PRVOUKA_LANDING_GAMES: PrvoukaLandingGame[] = [
     bg: '#e0f2e6',
     playBg: '#E7F9EE',
     image: `${TRETAK}/podminky.jpg`,
+    iconImage: `${TRETAK_IKONY}/podminky.png`,
     grades: [3],
   },
   {
@@ -170,6 +205,7 @@ export const PRVOUKA_LANDING_GAMES: PrvoukaLandingGame[] = [
     bg: '#FFD3C5',
     playBg: '#FCEEEF',
     image: `${TRETAK}/symboly.jpg`,
+    iconImage: `${TRETAK_IKONY}/symboly.png`,
     grades: [3],
   },
   {
@@ -182,6 +218,7 @@ export const PRVOUKA_LANDING_GAMES: PrvoukaLandingGame[] = [
     bg: '#fcfbdc',
     playBg: '#FAF3D4',
     image: `${TRETAK}/zeme.jpg`,
+    iconImage: `${TRETAK_IKONY}/zeme.png`,
     grades: [3],
   },
 ];
@@ -197,7 +234,7 @@ export const PRVOUKA_GAME_GROUPS: Array<{ title: string; games: PrvoukaGameType[
   { title: 'Poznávám přírodu', games: ['prvoukaZvirata', 'prvoukaOvoce'] },
   { title: 'Orientace v čase', games: ['prvoukaHodiny', 'prvoukaRokDen'] },
   { title: 'Bezpečí a zdraví', games: ['prvoukaBezpecnost'] },
-  { title: '3. ročník: Vesmír a Země', games: ['prvoukaModelSoustava', 'prvoukaModelMesic', 'prvoukaVesmir', 'prvoukaMesic', 'prvoukaPodminky'] },
+  { title: '3. ročník: Vesmír a Země', games: ['prvoukaModelSoustava', 'prvoukaModelMesic', 'prvoukaHvezdy', 'prvoukaVesmir', 'prvoukaMesic', 'prvoukaSouhvezdi', 'prvoukaPodminky'] },
   { title: '3. ročník: Naše republika', games: ['prvoukaSymboly', 'prvoukaZeme'] },
 ];
 
@@ -226,6 +263,76 @@ export function prvoukaGameSettings(game: PrvoukaLandingGame, backgroundSettings
         description: 'Přepnout jde i během promítání',
       },
       labels: { name: 'Popisky planet', type: 'boolean' as const, defaultValue: true, description: 'Jména planet u modelu' },
+    };
+  }
+  if (game.model === 'souhvezdi') {
+    // Stejně jako u ostatních her prvouky: ročník a zaškrtávací seznam, co se procvičuje.
+    return {
+      grade: { name: 'Ročník', type: 'select' as const, defaultValue: 3, options: [{ value: 3, label: '3. ročník' }], description: 'Vesmír – 3. ročník, 1. díl' },
+      seasons: {
+        name: 'Která souhvězdí spojujeme',
+        type: 'multiselect' as const,
+        defaultValue: ['cely-rok'],
+        // Text v závorce se ukáže šedě pod názvem (jako strany sešitu u ostatních her).
+        options: (['cely-rok', 'jaro', 'leto', 'podzim', 'zima'] as const).map((sid) => {
+          const se = SEASONS.find((x) => x.id === sid)!;
+          const names = CONSTELLATIONS.filter((c) => c.season === sid).map((c) => c.name).join(', ');
+          return { value: sid, label: `${se.icon} ${sid === 'cely-rok' ? 'Po celý rok (u Polárky)' : se.name} (str. ${names})` };
+        }),
+        description: 'Hra z vybraných období vybere souhvězdí náhodně. Po Velkém voze děti hledají Polárku.',
+      },
+      draw: {
+        name: 'Jak spojujeme',
+        type: 'select' as const,
+        defaultValue: 'klik',
+        options: [
+          { value: 'klik', label: 'Klepnutím na hvězdy' },
+          { value: 'kresli', label: 'Kreslením prstem nebo perem' },
+        ],
+        description: 'Kreslení je jako v Písance: přerušovaná čára ukáže cestu k další hvězdě. Hodí se na interaktivní tabuli a tablet.',
+      },
+      rounds: {
+        name: 'Počet úloh',
+        type: 'select' as const,
+        defaultValue: 5,
+        options: [
+          { value: 3, label: '3 úlohy' },
+          { value: 5, label: '5 úloh' },
+          { value: 8, label: '8 úloh' },
+          { value: 10, label: '10 úloh' },
+        ],
+        description: 'Každá úloha je jedno souhvězdí; když je ve vybraných obdobích souhvězdí méně, hrají se všechna',
+      },
+    };
+  }
+  // Model hvězdné oblohy nic nenastavuje – roční období se přepínají přímo v modelu.
+  if (game.model === 'hvezdy') {
+    // Jen pokročilá nastavení (nejsou v základních klíčích konfigurátoru), období se přepínají přímo v modelu.
+    return {
+      start: {
+        name: 'Obloha na začátku',
+        type: 'select' as const,
+        defaultValue: 'dnes',
+        options: [
+          { value: 'dnes', label: 'Dnešní roční období' },
+          { value: 'vse', label: 'Celá obloha' },
+          { value: 'jaro', label: 'Jaro' },
+          { value: 'leto', label: 'Léto' },
+          { value: 'podzim', label: 'Podzim' },
+          { value: 'zima', label: 'Zima' },
+        ],
+        description: 'Období jde přepnout i během promítání',
+      },
+      names: {
+        name: 'Jména souhvězdí na celé obloze',
+        type: 'select' as const,
+        defaultValue: 'hover',
+        options: [
+          { value: 'hover', label: 'Po najetí / klepnutí' },
+          { value: 'vzdy', label: 'Vždy' },
+        ],
+        description: 'U ročních období jsou jména vidět vždy',
+      },
     };
   }
   if (game.model === 'mesic') {

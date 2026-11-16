@@ -43,7 +43,10 @@ export function useIsMobile(): boolean {
 export function useDesktopScale(): number {
   const compute = () => {
     if (typeof window === 'undefined') return 1;
-    return Math.max(0.85, Math.min(2.4, Math.min(window.innerWidth / 1100, window.innerHeight / 700)));
+    // Spodní mez je nízko, aby se i v nízkém okně notebooku vešlo zadání, úloha i skóre dole.
+    // Tablet na výšku (okno vyšší než široké): úloha je v jednom sloupci, stačí jí užší plocha – jinak by byla malá a dole prázdno.
+    const portrait = window.innerWidth >= 768 && window.innerHeight > window.innerWidth;
+    return Math.max(0.55, Math.min(2.4, Math.min(window.innerWidth / (portrait ? 860 : 1100), window.innerHeight / (portrait ? 1000 : 760))));
   };
   const [scale, setScale] = useState(compute);
   useEffect(() => {
@@ -68,13 +71,13 @@ export function PrvoukaProgress({ current, total, lives, maxLives = 3 }: { curre
   return (
     <div
       className="flex items-center gap-3 sm:gap-5 rounded-full px-4 sm:px-5 py-2 sm:py-2.5"
-      style={{ background: '#FAFAFA', border: '1px solid #E8E8E8' }}
+      style={{ background: PRVOUKA_COLORS.CARD_BG, border: `2px solid ${PRVOUKA_COLORS.CARD_BORDER}` }}
     >
       <div className="flex items-center gap-2 sm:gap-3">
-        <div className="rounded-full overflow-hidden" style={{ backgroundColor: '#E8E8E8', height: isMobile ? 8 : 12 * s, width: isMobile ? 120 : 190 * s }}>
-          <div className="h-full transition-all duration-300" style={{ width: `${progress}%`, backgroundColor: '#93C5FD' }} />
+        <div className="rounded-full overflow-hidden" style={{ backgroundColor: '#F3E6D4', height: isMobile ? 8 : 12 * s, width: isMobile ? 120 : 190 * s }}>
+          <div className="h-full transition-all duration-300" style={{ width: `${progress}%`, backgroundColor: PRVOUKA_COLORS.CARD_BORDER }} />
         </div>
-        <div style={{ color: '#6B7280', fontSize: isMobile ? 22 : 28 * s, fontWeight: 500, minWidth: isMobile ? 70 : 95 * s, textAlign: 'right' }}>
+        <div style={{ color: PRVOUKA_COLORS.TEXT, fontSize: isMobile ? 22 : 28 * s, fontWeight: 600, minWidth: isMobile ? 70 : 95 * s, textAlign: 'right' }}>
           {current}/{total}
         </div>
       </div>
@@ -92,13 +95,21 @@ export function PrvoukaProgress({ current, total, lives, maxLives = 3 }: { curre
 /* ---------------------------------------------------------- zpětná vazba */
 
 /** Překryv SPRÁVNĚ! / ZKUS ZNOVU! – stejný jako v Rozřaď čísla, navíc krátká nápověda. */
-export function PrvoukaFeedbackOverlay({ isCorrect, hint, onComplete }: { isCorrect: boolean; hint?: string; onComplete: () => void }) {
+/** info = krátký text pod SPRÁVNĚ! (např. co je to za souhvězdí); okno pak zůstane déle. */
+export function PrvoukaFeedbackOverlay({ isCorrect, hint, info, onComplete }: { isCorrect: boolean; hint?: string; info?: string; onComplete: () => void }) {
   const isMobile = useIsMobile();
   const s = isMobile ? 1 : useDesktopScaleValue();
+  // S informací (Souhvězdí) okno samo nezmizí – děti si text přečtou a pokračují klepnutím nebo klávesou.
+  const waits = isCorrect && Boolean(info);
   useEffect(() => {
+    if (waits) {
+      const onKey = () => onComplete();
+      window.addEventListener('keydown', onKey);
+      return () => window.removeEventListener('keydown', onKey);
+    }
     const timer = setTimeout(onComplete, isCorrect ? 1300 : hint ? 2600 : 1500);
     return () => clearTimeout(timer);
-  }, [onComplete, isCorrect, hint]);
+  }, [onComplete, isCorrect, hint, waits]);
   return (
     <motion.div
       className="fixed inset-0 flex items-center justify-center z-50 p-4"
@@ -117,6 +128,15 @@ export function PrvoukaFeedbackOverlay({ isCorrect, hint, onComplete }: { isCorr
       >
         <div className="text-white" style={{ fontSize: 80 * s, lineHeight: 1, marginBottom: 12 * s }}>{isCorrect ? '✓' : '✗'}</div>
         <div className="text-white" style={{ fontSize: 44 * s, fontWeight: 'bold' }}>{isCorrect ? 'SPRÁVNĚ!' : 'ZKUS ZNOVU!'}</div>
+        {isCorrect && info ? (
+          <>
+            <div className="text-white mt-3" style={{ fontSize: 22 * s, fontWeight: 600, lineHeight: 1.35, maxWidth: 640 * s }}>{info}</div>
+            {/* Nenápadná poznámka pod textem, ne tlačítko. */}
+            <div className="mt-5 pt-3 text-white/75" style={{ fontSize: 15 * s, fontWeight: 600, borderTop: '1px solid rgba(255,255,255,.3)' }}>
+              Pokračuj klepnutím nebo libovolnou klávesou
+            </div>
+          </>
+        ) : null}
         {!isCorrect && hint ? (
           <div className="text-white mt-3" style={{ fontSize: 22 * s, fontWeight: 600, lineHeight: 1.35, maxWidth: 640 * s }}>{hint}</div>
         ) : null}
